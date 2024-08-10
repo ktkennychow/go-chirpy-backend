@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -8,29 +9,27 @@ type apiConfig struct {
 	fileserverHits int
 }
 
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		cfg.fileserverHits++
-		next.ServeHTTP(w, r)
-	})
-}
-
 func main(){
-	serveMux := http.NewServeMux()
-	server := http.Server{Handler: serveMux, Addr: "localhost:8080" }
-	apiConfig := apiConfig{}
+	const filepathRoot = "."
+	const port = "8080"
+	
+	apiConfig := apiConfig{fileserverHits: 0}
+
+	sMux := http.NewServeMux()
+
+	server := &http.Server{Handler: sMux, Addr: ":" + port }
 	
 	dir := http.Dir(".")
-	fileServer := http.FileServer(dir)
+	handlerfs := apiConfig.middlewareMetricsInc(http.FileServer(dir))
 
-	serveMux.Handle("/app/*", http.StripPrefix("/app", apiConfig.middlewareMetricsInc(fileServer)))
+	sMux.Handle("/app/*", http.StripPrefix("/app", handlerfs))
 
-	serveMux.HandleFunc("/healthz", handlerReadiness)
+	sMux.HandleFunc("GET /healthz", handlerReadiness)
 
-	serveMux.HandleFunc("/metrics", apiConfig.handlerMetrics)
+	sMux.HandleFunc("GET /metrics", apiConfig.handlerMetrics)
 
-	serveMux.HandleFunc("/reset", apiConfig.handlerReset)
+	sMux.HandleFunc("/reset", apiConfig.handlerReset)
 
-	server.ListenAndServe()
+	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
+	log.Fatal(server.ListenAndServe())
 }
