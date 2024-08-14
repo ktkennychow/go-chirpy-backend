@@ -6,14 +6,14 @@ import (
 )
 
 type apiConfig struct {
-	fileserverHits int
+	FileserverHits int
 }
 
 func main(){
 	const filepathRoot = "."
 	const port = "8080"
 	
-	apiConfig := apiConfig{fileserverHits: 0}
+	apiConfig := apiConfig{FileserverHits: 0}
 
 	sMux := http.NewServeMux()
 
@@ -22,13 +22,15 @@ func main(){
 	dir := http.Dir(".")
 	handlerfs := apiConfig.middlewareMetricsInc(http.FileServer(dir))
 
-	sMux.Handle("/app/*", http.StripPrefix("/app", handlerfs))
+	sMux.Handle("GET /app/*", http.StripPrefix("/app", handlerfs))
 
-	sMux.HandleFunc("GET /healthz", handlerReadiness)
+	sMux.HandleFunc("GET /api/healthz", handlerReadiness)
 
-	sMux.HandleFunc("GET /metrics", apiConfig.handlerMetrics)
+	sMux.HandleFunc("GET /admin/metrics", apiConfig.handlerMetrics)
 
-	sMux.HandleFunc("/reset", apiConfig.handlerReset)
+	sMux.HandleFunc("GET /api/reset", apiConfig.handlerReset)
+
+	sMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
