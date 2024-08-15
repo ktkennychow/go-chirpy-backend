@@ -1,5 +1,0 @@
-POST http://localhost:8080/api/validate_chirp HTTP/1.1
-
-{
-  "body": "This is a good opinion I need to share with the world"
-}

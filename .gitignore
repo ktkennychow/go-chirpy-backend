@@ -1,2 +1,5 @@
 # executable
 out
+
+# local data
+database.json

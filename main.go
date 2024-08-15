@@ -12,6 +12,11 @@ type apiConfig struct {
 func main(){
 	const filepathRoot = "."
 	const port = "8080"
+
+	db, err := NewDB("./database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
 	
 	apiConfig := apiConfig{FileserverHits: 0}
 
@@ -30,7 +35,9 @@ func main(){
 
 	sMux.HandleFunc("GET /api/reset", apiConfig.handlerReset)
 
-	sMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	sMux.HandleFunc("POST /api/chirps", db.handlerPostChirps)
+
+	sMux.HandleFunc("GET /api/chirps", db.handlerGetChirps)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
