@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"sort"
 	"sync"
@@ -89,6 +90,36 @@ func (db *DB) GetChirps() ([]Chirp, error){
 		chirpsSlice = append(chirpsSlice, chirp)
 	}
 	return chirpsSlice, nil
+}
+
+// GetSingleChirp returns a chirp in the database using a chirpID
+func (db *DB) GetSingleChirp(chirpID int) (Chirp, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	var chirp Chirp
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return chirp, err
+	}
+
+	dat, err := os.ReadFile(db.path)
+	if err != nil {
+		return chirp, err
+	}
+	
+	err = json.Unmarshal(dat, &currentDB)
+	if err != nil {
+		return chirp, err
+	}
+	
+	chirp, exist := currentDB.Chirps[chirpID]
+	if !exist {
+		return chirp, errors.New("Chirp you are looking for does not exist")
+	}
+
+	return chirp, nil
 }
 
 // ensureDB creates a new database file if it doesn't exist

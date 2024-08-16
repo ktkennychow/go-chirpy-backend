@@ -1,11 +1,11 @@
 package main
 
 import (
-	"cmp"
 	"encoding/json"
 	"log"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -15,9 +15,9 @@ type RespBody struct {
 	Body string `json:"body"`
 }
 
-func handlerError(w http.ResponseWriter, err error, respBody *RespBody) {
-	log.Printf("Error decoding parameters: %s", err)
-	w.WriteHeader(500)
+func handlerError(w http.ResponseWriter, err error, respBody *RespBody, code int) {
+	log.Printf("Error: %s", err)
+	w.WriteHeader(code)
 	respBody.Error = "Something went wrong"
 }
 
@@ -52,7 +52,7 @@ func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&reqBody)
 	if err != nil {
-		handlerError(w, err, respBody)
+		handlerError(w, err, respBody, 500)
 		return
 	} 
 	
@@ -72,7 +72,7 @@ func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	respBody.Body = strings.Join(words, " ")
 	chirp, err := db.CreateChirp(respBody.Body)
 	if err != nil {
-		handlerError(w, err, respBody)
+		handlerError(w, err, respBody, 500)
 		return
 	}
 	
@@ -80,7 +80,7 @@ func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {
-		handlerError(w, err, respBody)
+		handlerError(w, err, respBody, 500)
 		return
 	}
 	
@@ -94,14 +94,40 @@ func (db *DB)handlerGetChirps(w http.ResponseWriter, r *http.Request){
 
 	chirps, err := db.GetChirps()
 	if err != nil {
-		handlerError(w, err, respBody)
+		handlerError(w, err, respBody, 500)
 		return
 	}
-	slices.SortStableFunc(chirps, func(i, j Chirp)int{return cmp.Compare(i.ID, j.ID)})
-
+	
 	dat, err := json.Marshal(chirps)
 	if err != nil {
-		handlerError(w, err, respBody)
+		handlerError(w, err, respBody, 500)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write(dat)
+}
+
+func (db *DB)handlerGetSingleChirp(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+	
+	chirpIDPath := r.PathValue("chirpID")
+	chirpID, err := strconv.Atoi(chirpIDPath)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	chirp, err := db.GetSingleChirp(chirpID)
+	if err != nil {
+		handlerError(w, err, respBody, 404)
+		return
+	}
+	
+	dat, err := json.Marshal(chirp)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
 		return
 	}
 

@@ -39,6 +39,8 @@ func main(){
 
 	sMux.HandleFunc("GET /api/chirps", db.handlerGetChirps)
 
+	sMux.HandleFunc("GET /api/chirps/{chirpID}", db.handlerGetSingleChirp)
+
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
 }
