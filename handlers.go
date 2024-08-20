@@ -13,6 +13,7 @@ type RespBody struct {
 	Id int `json:"id"`
 	Error string `json:"error"`
 	Body string `json:"body"`
+	Email string `json:"email"`
 }
 
 func handlerError(w http.ResponseWriter, err error, respBody *RespBody, code int) {
@@ -44,10 +45,10 @@ func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
-	type parameters struct {
+	type reqParams struct {
 		Body string `json:"body"`
 	}
-	reqBody := parameters{}
+	reqBody := reqParams{}
 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&reqBody)
@@ -132,5 +133,40 @@ func (db *DB)handlerGetSingleChirp(w http.ResponseWriter, r *http.Request){
 	}
 
 	w.WriteHeader(200)
+	w.Write(dat)
+}
+
+func (db *DB) handlerPostUsers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+
+	type reqParams struct {
+		Email string `json:"email"`
+	}
+	reqBody := reqParams{}
+
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&reqBody)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	user, err := db.CreateUsers(reqBody.Email)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	respBody.Id = user.ID
+	respBody.Email = user.Email
+	
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	w.WriteHeader(201)
 	w.Write(dat)
 }

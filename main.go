@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 )
@@ -10,6 +11,13 @@ type apiConfig struct {
 }
 
 func main(){
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+
+	if *dbg {
+			deleteDB("./database.json")
+	}
+
 	const filepathRoot = "."
 	const port = "8080"
 
@@ -40,6 +48,8 @@ func main(){
 	sMux.HandleFunc("GET /api/chirps", db.handlerGetChirps)
 
 	sMux.HandleFunc("GET /api/chirps/{chirpID}", db.handlerGetSingleChirp)
+
+	sMux.HandleFunc("POST /api/users", db.handlerPostUsers)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
