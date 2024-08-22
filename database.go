@@ -16,6 +16,7 @@ type Chirp struct {
 type User struct {
 	ID int `json:"id"`
 	Email string `json:"email"`
+	HashedPassword []byte `json:"hashedpassword"`
 }
 
 type DB struct {
@@ -47,7 +48,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error){
 		return newChirp, err
 	}
 
-	chirps, err := db.GetChirps()
+	chirps, err := db.ReadChirps()
 	if err != nil {
 		return newChirp, err
 	}
@@ -71,8 +72,8 @@ func (db *DB) CreateChirp(body string) (Chirp, error){
 
 }
 
-// GetChirps returns all chirps in the database
-func (db *DB) GetChirps() ([]Chirp, error){
+// ReadChirps returns all chirps in the database
+func (db *DB) ReadChirps() ([]Chirp, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -98,8 +99,8 @@ func (db *DB) GetChirps() ([]Chirp, error){
 	return chirpsSlice, nil
 }
 
-// GetSingleChirp returns a chirp in the database using a chirpID
-func (db *DB) GetSingleChirp(chirpID int) (Chirp, error){
+// ReadSingleChirp returns a chirp in the database using a chirpID
+func (db *DB) ReadSingleChirp(chirpID int) (Chirp, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -129,20 +130,26 @@ func (db *DB) GetSingleChirp(chirpID int) (Chirp, error){
 }
 
 // CreateUsers creates a new User and saves it to disk
-func (db *DB) CreateUsers(email string) (User, error){
+func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
-	newUser := User{Email: email}
+	newUser := User{}
 
 	currentDB, err := db.loadDB()
 	if err != nil {
 		return newUser, err
 	}
 
-	users, err := db.GetUsers()
+	users, err := db.ReadUsers()
 	if err != nil {
 		return newUser, err
+	}
+
+	for _, v := range users {
+		if v.Email == newUser.Email {
+			return newUser, errors.New("a user with the input email already exists")
+		}
 	}
 
 	sort.Slice(users, func(i, j int) bool { return users[i].ID < users[j].ID })
@@ -152,6 +159,9 @@ func (db *DB) CreateUsers(email string) (User, error){
 	} else {
 		newUser.ID = users[len(users) - 1].ID + 1
 	}
+
+	newUser.Email = email
+	newUser.HashedPassword = hashedPassword
 
 	users = append(users, newUser)
 
@@ -163,8 +173,8 @@ func (db *DB) CreateUsers(email string) (User, error){
 	return newUser, nil
 }
 
-// GetUsers returns all users in the database
-func (db *DB) GetUsers() ([]User, error){
+// ReadUsers returns all users in the database
+func (db *DB) ReadUsers() ([]User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -184,10 +194,41 @@ func (db *DB) GetUsers() ([]User, error){
 	if err != nil {
 		return usersSlice, err
 	}
+
 	for _, user := range currentDB.Users {
 		usersSlice = append(usersSlice, user)
 	}
+
 	return usersSlice, nil
+}
+
+// ReadSingleUser returns a user in the database
+func (db *DB) ReadSingleUser(userEmail string) (User, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	dat, err := os.ReadFile(db.path)
+	if err != nil {
+		return User{}, err
+	}
+	
+	err = json.Unmarshal(dat, &currentDB)
+	if err != nil {
+		return User{}, err
+	}
+
+	for _, user := range currentDB.Users {
+		if user.Email == userEmail {
+			return user, nil
+		}
+	}
+
+	return User{}, errors.New("no user with a matching email")
 }
 
 // ensureDB creates a new database file if it doesn't exist

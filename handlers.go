@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RespBody struct {
@@ -17,9 +18,8 @@ type RespBody struct {
 }
 
 func handlerError(w http.ResponseWriter, err error, respBody *RespBody, code int) {
-	log.Printf("Error: %s", err)
 	w.WriteHeader(code)
-	respBody.Error = "Something went wrong"
+	respBody.Error = err.Error()
 }
 
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hits reset to 0"))
 }
 
-func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
+func (db *DB) handlerCreateChirps(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
@@ -89,11 +89,11 @@ func (db *DB) handlerPostChirps(w http.ResponseWriter, r *http.Request) {
 	w.Write(dat)
 }
 
-func (db *DB)handlerGetChirps(w http.ResponseWriter, r *http.Request){
+func (db *DB)handlerReadChirps(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
-	chirps, err := db.GetChirps()
+	chirps, err := db.ReadChirps()
 	if err != nil {
 		handlerError(w, err, respBody, 500)
 		return
@@ -109,7 +109,7 @@ func (db *DB)handlerGetChirps(w http.ResponseWriter, r *http.Request){
 	w.Write(dat)
 }
 
-func (db *DB)handlerGetSingleChirp(w http.ResponseWriter, r *http.Request){
+func (db *DB)handlerReadSingleChirp(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 	
@@ -120,7 +120,7 @@ func (db *DB)handlerGetSingleChirp(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	
-	chirp, err := db.GetSingleChirp(chirpID)
+	chirp, err := db.ReadSingleChirp(chirpID)
 	if err != nil {
 		handlerError(w, err, respBody, 404)
 		return
@@ -136,12 +136,13 @@ func (db *DB)handlerGetSingleChirp(w http.ResponseWriter, r *http.Request){
 	w.Write(dat)
 }
 
-func (db *DB) handlerPostUsers(w http.ResponseWriter, r *http.Request) {
+func (db *DB) handlerCreateUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
 	type reqParams struct {
 		Email string `json:"email"`
+		Password string `json:"password"`
 	}
 	reqBody := reqParams{}
 
@@ -152,7 +153,13 @@ func (db *DB) handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	user, err := db.CreateUsers(reqBody.Email)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(reqBody.Password), 1)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+
+	user, err := db.CreateUsers(reqBody.Email, hashedPassword)
 	if err != nil {
 		handlerError(w, err, respBody, 500)
 		return
@@ -168,5 +175,47 @@ func (db *DB) handlerPostUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	w.WriteHeader(201)
+	w.Write(dat)
+}
+
+func (db *DB) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+
+	type reqParams struct {
+		Password string `json:"password"`
+		Email string `json:"email"`
+	}
+	reqBody := reqParams{}
+
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&reqBody)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	user, err := db.ReadSingleUser(reqBody.Email)
+	if err != nil {
+		handlerError(w, err, respBody, 401)
+		return
+	}
+	
+	err = bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(reqBody.Password))
+	if err != nil {
+		handlerError(w, err, respBody, 401)
+		return
+	}
+	
+	respBody.Id = user.ID
+	respBody.Email = user.Email
+	
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		handlerError(w, err, respBody, 500)
+		return
+	}
+	
+	w.WriteHeader(200)
 	w.Write(dat)
 }

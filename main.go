@@ -43,13 +43,15 @@ func main(){
 
 	sMux.HandleFunc("GET /api/reset", apiConfig.handlerReset)
 
-	sMux.HandleFunc("POST /api/chirps", db.handlerPostChirps)
+	sMux.HandleFunc("POST /api/chirps", db.handlerCreateChirps)
 
-	sMux.HandleFunc("GET /api/chirps", db.handlerGetChirps)
+	sMux.HandleFunc("GET /api/chirps", db.handlerReadChirps)
 
-	sMux.HandleFunc("GET /api/chirps/{chirpID}", db.handlerGetSingleChirp)
+	sMux.HandleFunc("GET /api/chirps/{chirpID}", db.handlerReadSingleChirp)
 
-	sMux.HandleFunc("POST /api/users", db.handlerPostUsers)
+	sMux.HandleFunc("POST /api/users", db.handlerCreateUsers)
+
+	sMux.HandleFunc("POST /api/login", db.handlerLogin)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
