@@ -4,13 +4,19 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
 )
 
 type apiConfig struct {
 	FileserverHits int
+	DB *DB
+	jwtSecret string
 }
 
 func main(){
+	godotenv.Load()
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
 
@@ -26,7 +32,7 @@ func main(){
 		log.Fatal(err)
 	}
 	
-	apiConfig := apiConfig{FileserverHits: 0}
+	apiConfig := apiConfig{FileserverHits: 0, DB: db, jwtSecret: os.Getenv("JWT_SECRET")}
 
 	sMux := http.NewServeMux()
 
@@ -43,15 +49,15 @@ func main(){
 
 	sMux.HandleFunc("GET /api/reset", apiConfig.handlerReset)
 
-	sMux.HandleFunc("POST /api/chirps", db.handlerCreateChirps)
+	sMux.HandleFunc("POST /api/chirps", apiConfig.handlerCreateChirps)
 
-	sMux.HandleFunc("GET /api/chirps", db.handlerReadChirps)
+	sMux.HandleFunc("GET /api/chirps", apiConfig.handlerReadChirps)
 
-	sMux.HandleFunc("GET /api/chirps/{chirpID}", db.handlerReadSingleChirp)
+	sMux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.handlerReadSingleChirp)
 
-	sMux.HandleFunc("POST /api/users", db.handlerCreateUsers)
+	sMux.HandleFunc("POST /api/users", apiConfig.handlerCreateUsers)
 
-	sMux.HandleFunc("POST /api/login", db.handlerLogin)
+	sMux.HandleFunc("POST /api/login", apiConfig.handlerLogin)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
