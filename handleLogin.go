@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -41,10 +43,10 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tokenLife int
-	const duration = 24 * time.Hour
+	const maxDuration = 1 * time.Hour
 
-	if reqBody.Expires_in_seconds == 0 || reqBody.Expires_in_seconds > int(duration.Seconds()) {
-		tokenLife = int(duration.Seconds())
+	if reqBody.Expires_in_seconds == 0 || reqBody.Expires_in_seconds > int(maxDuration.Seconds()) {
+		tokenLife = int(maxDuration.Seconds())
 	} else {
 		tokenLife = reqBody.Expires_in_seconds
 	}
@@ -64,9 +66,27 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	random32Bytes := make([]byte, 32)
+	
+	_, err = rand.Read([]byte(random32Bytes))
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+
+	refreshToken := hex.EncodeToString(random32Bytes)
+	refreshTokenExpiry := time.Now().UTC().Add(60 * time.Hour)
+
+	user, err = cfg.DB.UpdateUser(user.Email, user.HashedPassword, user.ID, refreshToken, refreshTokenExpiry)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+	
 	respBody.ID = user.ID
 	respBody.Email = user.Email
 	respBody.Token = signedJwtToken
+	respBody.RefreshToken = refreshToken
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {

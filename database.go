@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 )
 
 type Chirp struct {
@@ -16,7 +17,9 @@ type Chirp struct {
 type User struct {
 	ID int `json:"id"`
 	Email string `json:"email"`
-	HashedPassword []byte `json:"hashedpassword"`
+	HashedPassword []byte `json:"hashed_password"`
+	RefreshToken string `json:"refresh_token"`
+	RefreshTokenExpiry time.Time `json:"refresh_token_expiry"`
 }
 
 type DB struct {
@@ -174,7 +177,7 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 }
 
 // UpdateUser update a User and saves it to disk
-func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User, error){
+func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int, refreshToken string, refreshTokenExpiry time.Time) (User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -193,6 +196,8 @@ func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User,
 	updatedUser.ID = user.ID
 	updatedUser.Email = email
 	updatedUser.HashedPassword = hashedPassword
+	updatedUser.RefreshToken = refreshToken
+	updatedUser.RefreshTokenExpiry = refreshTokenExpiry
 
 	currentDB.Users[userID] = updatedUser
 
