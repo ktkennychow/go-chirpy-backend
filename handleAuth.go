@@ -147,3 +147,25 @@ w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(dat)
 }
+
+func (cfg *apiConfig) handlerRevokeAuth(w http.ResponseWriter, r *http.Request){
+w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+
+	refreshToken := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+	err := cfg.DB.DeleteRefreshToken(refreshToken)
+	if err != nil {
+		handlerErrors(w, err, respBody, 401)
+		return
+	}
+
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		w.Write(dat)
+		return
+	}
+
+	w.WriteHeader(204)
+}

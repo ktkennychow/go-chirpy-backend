@@ -220,6 +220,27 @@ func (db *DB) ReadSingleRefreshTokenDetail(refreshToken string) (RefreshToken, e
 	return refreshTokenStruct, nil
 }
 
+// DeleteRefreshToken deletes a refresh token from the database
+func (db *DB) DeleteRefreshToken(refreshToken string) error{
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+	
+	_, exist := currentDB.RefreshTokens[refreshToken]
+	if !exist {
+		return errors.New("refresh token does not exist")
+	}
+
+	delete(currentDB.RefreshTokens, refreshToken)
+
+	db.writeDB(currentDB)
+	return nil
+}
+
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error{
 	_, exist := os.Stat(db.path)

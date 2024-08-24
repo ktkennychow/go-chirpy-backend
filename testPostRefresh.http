@@ -1,2 +1,2 @@
 POST http://localhost:8080/api/refresh HTTP/1.1
-Authorization: Bearer eee0bda02a92dfa75a73f1272cf3d9bccc591b31f30cc739be377531bfedd4b3
+Authorization: Bearer cecafb6acd71e23940ff78a17fc9e6005964236e699d7e62bfe863b33b5aeba0
