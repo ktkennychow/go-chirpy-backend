@@ -56,8 +56,8 @@ func (cfg *apiConfig) handlerCreateUsers(w http.ResponseWriter, r *http.Request)
 func (cfg *apiConfig) handlerModifyUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
-	jwtTokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
+	jwtTokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	jwtToken, err := jwt.ParseWithClaims(jwtTokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {return []byte(cfg.jwtSecret), nil})
 	if err != nil {
 		handlerErrors(w, err, respBody, 401)

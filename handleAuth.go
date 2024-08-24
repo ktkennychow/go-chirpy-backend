@@ -6,11 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const MAXDURATION = 1 * time.Hour
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -43,10 +46,9 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tokenLife int
-	const maxDuration = 1 * time.Hour
 
-	if reqBody.Expires_in_seconds == 0 || reqBody.Expires_in_seconds > int(maxDuration.Seconds()) {
-		tokenLife = int(maxDuration.Seconds())
+	if reqBody.Expires_in_seconds == 0 || reqBody.Expires_in_seconds > int(MAXDURATION.Seconds()) {
+		tokenLife = int(MAXDURATION.Seconds())
 	} else {
 		tokenLife = reqBody.Expires_in_seconds
 	}
@@ -94,6 +96,54 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	w.WriteHeader(200)
+	w.Write(dat)
+}
+
+func (cfg *apiConfig) handlerRefreshAuth(w http.ResponseWriter, r *http.Request){
+w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+
+	refreshToken := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+	refreshTokenStruct, err := cfg.DB.ReadSingleRefreshTokenDetail(refreshToken)
+	if err != nil {
+		handlerErrors(w, err, respBody, 401)
+		return
+	}
+
+	tokenLife := int(MAXDURATION.Seconds())
+	expirationTime := time.Now().UTC().Add(time.Duration(tokenLife) * time.Second)
+
+	newJwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+			Issuer:    "chirpy",
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			Subject:   fmt.Sprint(refreshTokenStruct.UserID),
+	})
+
+	signedJwtToken, err := newJwtToken.SignedString([]byte(cfg.jwtSecret))
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+	
+	random32Bytes := make([]byte, 32)
+	
+	_, err = rand.Read([]byte(random32Bytes))
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+
+	respBody.Token = signedJwtToken
+
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+
 	w.WriteHeader(200)
 	w.Write(dat)
 }

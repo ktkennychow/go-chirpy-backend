@@ -61,6 +61,8 @@ func main(){
 
 	sMux.HandleFunc("POST /api/login", apiConfig.handlerLogin)
 
+	sMux.HandleFunc("POST /api/refresh", apiConfig.handlerRefreshAuth)
+
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
 }

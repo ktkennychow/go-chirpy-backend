@@ -9,31 +9,7 @@ import (
 	"time"
 )
 
-type Chirp struct {
-	ID int `json:"id"`
-	Body string `json:"body"`
-}
-
-type User struct {
-	ID int `json:"id"`
-	Email string `json:"email"`
-	HashedPassword []byte `json:"hashed_password"`
-	RefreshToken string `json:"refresh_token"`
-	RefreshTokenExpiry time.Time `json:"refresh_token_expiry"`
-}
-
-type DB struct {
-	path string
-	mux  *sync.RWMutex
-}
-
-type DBStructure struct {
-	Chirps map[int]Chirp `json:"chirps"`
-	Users map[int]User `json:"users"`
-}
-
-// NewDB creates a new database connection
-// and creates the database file if it doesn't exist
+// NewDB creates a new database connection and creates the database file if it doesn't exist
 func NewDB(path string) (*DB, error){
 	newDB := DB{path: path, mux: &sync.RWMutex{}}
 	newDB.ensureDB()
@@ -87,15 +63,6 @@ func (db *DB) ReadChirps() ([]Chirp, error){
 		return chirpsSlice, err
 	}
 
-	dat, err := os.ReadFile(db.path)
-	if err != nil {
-		return chirpsSlice, err
-	}
-	
-	err = json.Unmarshal(dat, &currentDB)
-	if err != nil {
-		return chirpsSlice, err
-	}
 	for _, chirp := range currentDB.Chirps {
 		chirpsSlice = append(chirpsSlice, chirp)
 	}
@@ -113,20 +80,10 @@ func (db *DB) ReadSingleChirp(chirpID int) (Chirp, error){
 	if err != nil {
 		return chirp, err
 	}
-
-	dat, err := os.ReadFile(db.path)
-	if err != nil {
-		return chirp, err
-	}
-	
-	err = json.Unmarshal(dat, &currentDB)
-	if err != nil {
-		return chirp, err
-	}
 	
 	chirp, exist := currentDB.Chirps[chirpID]
 	if !exist {
-		return chirp, errors.New("Chirp you are looking for does not exist")
+		return chirp, errors.New("Chirp does not exist")
 	}
 
 	return chirp, nil
@@ -190,16 +147,15 @@ func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int, refres
 	
 	user, exist := currentDB.Users[userID]
 	if !exist {
-		return updatedUser, errors.New("Chirp you are looking for does not exist")
+		return updatedUser, errors.New("User does not exist")
 	}
 
 	updatedUser.ID = user.ID
 	updatedUser.Email = email
 	updatedUser.HashedPassword = hashedPassword
-	updatedUser.RefreshToken = refreshToken
-	updatedUser.RefreshTokenExpiry = refreshTokenExpiry
 
 	currentDB.Users[userID] = updatedUser
+	currentDB.RefreshTokens[refreshToken] = RefreshToken{UserID: user.ID, RefreshToken: refreshToken, ExpiresAt: refreshTokenExpiry}
 
 	db.writeDB(currentDB)
 	return updatedUser, nil
@@ -243,40 +199,32 @@ func (db *DB) ReadSingleUserbyEmail(userEmail string) (User, error){
 	return User{}, errors.New("no user with a matching email")
 }
 
-// ReadSingleUserbyID returns a user in the database
-func (db *DB) ReadSingleUserbyID(userEmail string) (User, error){
+// ReadSingleRefreshToken returns a refresh token in the database
+func (db *DB) ReadSingleRefreshTokenDetail(refreshToken string) (RefreshToken, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
 	currentDB, err := db.loadDB()
 	if err != nil {
-		return User{}, err
+		return RefreshToken{}, err
 	}
 
-	dat, err := os.ReadFile(db.path)
-	if err != nil {
-		return User{}, err
+	refreshTokenStruct, exist := currentDB.RefreshTokens[refreshToken]
+	if !exist {
+		return RefreshToken{}, errors.New("refresh token does not exist")
 	}
-	
-	err = json.Unmarshal(dat, &currentDB)
-	if err != nil {
-		return User{}, err
+	if refreshTokenStruct.ExpiresAt.Before(time.Now()) {
+		return RefreshToken{}, errors.New("refresh token has expired")
 	}
 
-	for _, user := range currentDB.Users {
-		if user.Email == userEmail {
-			return user, nil
-		}
-	}
-
-	return User{}, errors.New("no user with a matching email")
+	return refreshTokenStruct, nil
 }
 
 // ensureDB creates a new database file if it doesn't exist
 func (db *DB) ensureDB() error{
 	_, exist := os.Stat(db.path)
 	if exist != nil {
-		newDBStructure := DBStructure{Chirps: map[int]Chirp{}, Users: map[int]User{}}
+		newDBStructure := DBStructure{Chirps: map[int]Chirp{}, Users: map[int]User{}, RefreshTokens: map[string]RefreshToken{}}
 		dat, err := json.Marshal(newDBStructure)
 		if err != nil {
 			return err
