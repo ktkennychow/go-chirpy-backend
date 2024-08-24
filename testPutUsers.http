@@ -1,9 +1,6 @@
 PUT http://localhost:8080/api/users HTTP/1.1
 
-Headers:
-{
-  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxIiwiZXhwIjoxNzI0NTYwODMzLCJpYXQiOjE3MjQ0NzQ0MzN9.o4XI--283wmUqIJFUxHxpCPi4PXVvJ10SbBUFIAnex0"
-}
+Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxIiwiZXhwIjoxNzI0NTYwODMzLCJpYXQiOjE3MjQ0NzQ0MzN9.o4XI--283wmUqIJFUxHxpCPi4PXVvJ10SbBUFIAnex0"
 
 body: 
 {
