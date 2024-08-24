@@ -173,6 +173,33 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 	return newUser, nil
 }
 
+// UpdateUser update a User and saves it to disk
+func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	updatedUser := User{}
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return updatedUser, err
+	}
+	
+	user, exist := currentDB.Users[userID]
+	if !exist {
+		return updatedUser, errors.New("Chirp you are looking for does not exist")
+	}
+
+	updatedUser.ID = user.ID
+	updatedUser.Email = email
+	updatedUser.HashedPassword = hashedPassword
+
+	currentDB.Users[userID] = updatedUser
+
+	db.writeDB(currentDB)
+	return updatedUser, nil
+}
+
 // ReadUsers returns all users in the database
 func (db *DB) ReadUsers() ([]User, error){
 	db.mux.RLock()
@@ -185,16 +212,6 @@ func (db *DB) ReadUsers() ([]User, error){
 		return usersSlice, err
 	}
 
-	dat, err := os.ReadFile(db.path)
-	if err != nil {
-		return usersSlice, err
-	}
-	
-	err = json.Unmarshal(dat, &currentDB)
-	if err != nil {
-		return usersSlice, err
-	}
-
 	for _, user := range currentDB.Users {
 		usersSlice = append(usersSlice, user)
 	}
@@ -202,8 +219,27 @@ func (db *DB) ReadUsers() ([]User, error){
 	return usersSlice, nil
 }
 
-// ReadSingleUser returns a user in the database
-func (db *DB) ReadSingleUser(userEmail string) (User, error){
+// ReadSingleUserbyEmail returns a user in the database
+func (db *DB) ReadSingleUserbyEmail(userEmail string) (User, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	for _, user := range currentDB.Users {
+		if user.Email == userEmail {
+			return user, nil
+		}
+	}
+
+	return User{}, errors.New("no user with a matching email")
+}
+
+// ReadSingleUserbyID returns a user in the database
+func (db *DB) ReadSingleUserbyID(userEmail string) (User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 

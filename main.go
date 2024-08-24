@@ -57,6 +57,8 @@ func main(){
 
 	sMux.HandleFunc("POST /api/users", apiConfig.handlerCreateUsers)
 
+	sMux.HandleFunc("PUT /api/users", apiConfig.handlerModifyUsers)
+
 	sMux.HandleFunc("POST /api/login", apiConfig.handlerLogin)
 
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)

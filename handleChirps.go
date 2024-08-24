@@ -44,7 +44,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 		return
 	}
 	
-	respBody.Id = chirp.ID
+	respBody.ID = chirp.ID
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {
