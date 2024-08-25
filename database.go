@@ -134,7 +134,7 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 }
 
 // UpdateUser update a User and saves it to disk
-func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int, refreshToken string, refreshTokenExpiry time.Time) (User, error){
+func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -155,7 +155,6 @@ func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int, refres
 	updatedUser.HashedPassword = hashedPassword
 
 	currentDB.Users[userID] = updatedUser
-	currentDB.RefreshTokens[refreshToken] = RefreshToken{UserID: user.ID, RefreshToken: refreshToken, ExpiresAt: refreshTokenExpiry}
 
 	db.writeDB(currentDB)
 	return updatedUser, nil
@@ -199,8 +198,30 @@ func (db *DB) ReadSingleUserbyEmail(userEmail string) (User, error){
 	return User{}, errors.New("no user with a matching email")
 }
 
-// ReadSingleRefreshToken returns a refresh token in the database
-func (db *DB) ReadSingleRefreshTokenDetail(refreshToken string) (RefreshToken, error){
+// CreateRefreshToken creates a refresh token and saves its details to disk
+func (db *DB) CreateRefreshTokenWDetails(userID int, refreshTokenString string, refreshTokenExpiry time.Time) (RefreshToken, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	refreshToken := RefreshToken{}
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return refreshToken, err
+	}
+
+	refreshToken.UserID = userID
+	refreshToken.RefreshToken = refreshTokenString
+	refreshToken.ExpiresAt = refreshTokenExpiry
+
+	currentDB.RefreshTokens[refreshTokenString] = refreshToken
+
+	db.writeDB(currentDB)
+	return refreshToken, nil
+}
+
+// ReadSingleRefreshTokenWDetails returns a refresh token in the database
+func (db *DB) ReadSingleRefreshTokenWDetails(refreshToken string) (RefreshToken, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 

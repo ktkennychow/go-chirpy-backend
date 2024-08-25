@@ -76,19 +76,26 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken := hex.EncodeToString(random32Bytes)
+	refreshTokenString := hex.EncodeToString(random32Bytes)
 	refreshTokenExpiry := time.Now().UTC().Add(60 * time.Hour)
 
-	user, err = cfg.DB.UpdateUser(user.Email, user.HashedPassword, user.ID, refreshToken, refreshTokenExpiry)
+	refreshToken, err := cfg.DB.CreateRefreshTokenWDetails(user.ID, refreshTokenString, refreshTokenExpiry)
 	if err != nil {
 		handlerErrors(w, err, respBody, 500)
 		return
 	}
+
+	updatedUser, err := cfg.DB.UpdateUser(user.Email, user.HashedPassword, user.ID)
+	if err != nil {
+		cfg.DB.DeleteRefreshToken(refreshTokenString)
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
 	
-	respBody.ID = user.ID
-	respBody.Email = user.Email
+	respBody.ID = updatedUser.ID
+	respBody.Email = updatedUser.Email
 	respBody.Token = signedJwtToken
-	respBody.RefreshToken = refreshToken
+	respBody.RefreshToken = refreshToken.RefreshToken
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {
@@ -106,7 +113,7 @@ w.Header().Set("Content-Type", "application/json")
 
 	refreshToken := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
-	refreshTokenStruct, err := cfg.DB.ReadSingleRefreshTokenDetail(refreshToken)
+	refreshTokenStruct, err := cfg.DB.ReadSingleRefreshTokenWDetails(refreshToken)
 	if err != nil {
 		handlerErrors(w, err, respBody, 401)
 		return

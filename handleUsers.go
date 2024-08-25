@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -94,7 +93,7 @@ func (cfg *apiConfig) handlerModifyUsers(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	user, err := cfg.DB.UpdateUser(reqBody.Email, hashedPassword, userID, "", time.Now())
+	user, err := cfg.DB.UpdateUser(reqBody.Email, hashedPassword, userID)
 	if err != nil {
 		handlerErrors(w, err, respBody, 500)
 		return
