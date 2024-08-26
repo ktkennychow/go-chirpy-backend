@@ -17,7 +17,7 @@ func NewDB(path string) (*DB, error){
 }
 
 // CreateChirp creates a new chirp and saves it to disk
-func (db *DB) CreateChirp(body string) (Chirp, error){
+func (db *DB) CreateChirp(body string, authorID int) (Chirp, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -39,6 +39,8 @@ func (db *DB) CreateChirp(body string) (Chirp, error){
 	} else {
 		newChirp.ID = chirps[len(chirps) - 1].ID + 1
 	}
+
+	newChirp.AuthorID = authorID
 
 	chirps = append(chirps, newChirp)
 

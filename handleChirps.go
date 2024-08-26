@@ -6,11 +6,31 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
+
+	jwtTokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	jwtToken, err := jwt.ParseWithClaims(jwtTokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {return []byte(cfg.jwtSecret), nil})
+	if err != nil {
+		handlerErrors(w, err, respBody, 401)
+		return
+	}
+
+	idString, err := jwtToken.Claims.GetSubject()
+	if err != nil {
+		handlerErrors(w, err, respBody, 401)
+		return
+	}
+	authorID, err := strconv.Atoi(idString)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
 
 	type reqParams struct {
 		Body string `json:"body"`
@@ -18,7 +38,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 	reqBody := reqParams{}
 
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&reqBody)
+	err = decoder.Decode(&reqBody)
 	if err != nil {
 		handlerErrors(w, err, respBody, 500)
 		return
@@ -38,13 +58,14 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 		}
 	}
 	respBody.Body = strings.Join(words, " ")
-	chirp, err := cfg.DB.CreateChirp(respBody.Body)
+	chirp, err := cfg.DB.CreateChirp(respBody.Body, authorID)
 	if err != nil {
 		handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
 	respBody.ID = chirp.ID
+	respBody.AuthorID = chirp.AuthorID
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {

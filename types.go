@@ -7,6 +7,7 @@ import (
 
 type RespBody struct {
 	ID int `json:"id"`
+	AuthorID int `json:"author_id"`
 	Error string `json:"error"`
 	Body string `json:"body"`
 	Email string `json:"email"`
@@ -16,6 +17,7 @@ type RespBody struct {
 
 type Chirp struct {
 	ID int `json:"id"`
+	AuthorID int `json:"author_id"`
 	Body string `json:"body"`
 }
 
