@@ -91,6 +91,27 @@ func (db *DB) ReadSingleChirp(chirpID int) (Chirp, error){
 	return chirp, nil
 }
 
+// DeleteSingleChirp deletes a Chirp from the database
+func (db *DB) DeleteSingleChirp(chirpID int) error{
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+	
+	_, exist := currentDB.Chirps[chirpID]
+	if !exist {
+		return errors.New("chirp does not exist")
+	}
+
+	delete(currentDB.Chirps, chirpID)
+
+	db.writeDB(currentDB)
+	return nil
+}
+
 // CreateUsers creates a new User and saves it to disk
 func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 	db.mux.RLock()

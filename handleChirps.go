@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"strconv"
@@ -113,6 +114,12 @@ func (cfg *apiConfig)handlerReadSingleChirp(w http.ResponseWriter, r *http.Reque
 func (cfg *apiConfig)handlerDeleteSingleChirp(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
+
+	userID, err := cfg.handlerAuthenticateWJwt(r)
+	if err != nil {
+		handlerErrors(w, err, respBody, 401)
+		return
+	}
 	
 	chirpIDPath := r.PathValue("chirpID")
 	chirpID, err := strconv.Atoi(chirpIDPath)
@@ -127,12 +134,16 @@ func (cfg *apiConfig)handlerDeleteSingleChirp(w http.ResponseWriter, r *http.Req
 		return
 	}
 	
-	dat, err := json.Marshal(chirp)
-	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+	if chirp.AuthorID != userID {
+		handlerErrors(w, errors.New("not authorized to delete this chirp"), respBody, 403)
 		return
 	}
 	
-	w.WriteHeader(200)
-	w.Write(dat)
+	err = cfg.DB.DeleteSingleChirp(chirp.ID)
+	if err != nil {
+		handlerErrors(w, err, respBody, 404)
+		return
+	}
+	
+	w.WriteHeader(204)
 }
