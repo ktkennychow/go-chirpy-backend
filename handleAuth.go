@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,4 +176,25 @@ w.Header().Set("Content-Type", "application/json")
 	}
 
 	w.WriteHeader(204)
+}
+
+func (cfg *apiConfig)handlerAuthenticateWJwt(r *http.Request)(int, error){
+	var userID int
+
+	jwtTokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	jwtToken, err := jwt.ParseWithClaims(jwtTokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {return []byte(cfg.jwtSecret), nil})
+
+	if err != nil {
+		return userID, err
+	}
+
+	idString, err := jwtToken.Claims.GetSubject()
+	if err != nil {
+		return userID, err
+	}
+	userID, err = strconv.Atoi(idString)
+	if err != nil {
+		return userID, err
+	}
+	return userID, nil
 }

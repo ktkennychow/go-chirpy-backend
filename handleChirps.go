@@ -6,29 +6,15 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
-	jwtTokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	jwtToken, err := jwt.ParseWithClaims(jwtTokenString, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {return []byte(cfg.jwtSecret), nil})
+	authorID, err := cfg.handlerAuthenticateWJwt(r)
 	if err != nil {
 		handlerErrors(w, err, respBody, 401)
-		return
-	}
-
-	idString, err := jwtToken.Claims.GetSubject()
-	if err != nil {
-		handlerErrors(w, err, respBody, 401)
-		return
-	}
-	authorID, err := strconv.Atoi(idString)
-	if err != nil {
-		handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -120,6 +106,33 @@ func (cfg *apiConfig)handlerReadSingleChirp(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	w.WriteHeader(200)
+	w.Write(dat)
+}
+
+func (cfg *apiConfig)handlerDeleteSingleChirp(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	respBody := &RespBody{}
+	
+	chirpIDPath := r.PathValue("chirpID")
+	chirpID, err := strconv.Atoi(chirpIDPath)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+	
+	chirp, err := cfg.DB.ReadSingleChirp(chirpID)
+	if err != nil {
+		handlerErrors(w, err, respBody, 404)
+		return
+	}
+	
+	dat, err := json.Marshal(chirp)
+	if err != nil {
+		handlerErrors(w, err, respBody, 500)
+		return
+	}
+	
 	w.WriteHeader(200)
 	w.Write(dat)
 }
