@@ -30,19 +30,19 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&reqBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
 	user, err := cfg.DB.ReadSingleUserbyEmail(reqBody.Email)
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 	
 	err = bcrypt.CompareHashAndPassword(user.HashedPassword, []byte(reqBody.Password))
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	signedJwtToken, err := jwtToken.SignedString([]byte(cfg.jwtSecret))
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -73,7 +73,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	
 	_, err = rand.Read([]byte(random32Bytes))
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -82,14 +82,14 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	refreshToken, err := cfg.DB.CreateRefreshTokenWDetails(user.ID, refreshTokenString, refreshTokenExpiry)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
 	updatedUser, err := cfg.DB.UpdateUser(user.Email, user.HashedPassword, user.ID)
 	if err != nil {
 		cfg.DB.DeleteRefreshToken(refreshTokenString)
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -97,10 +97,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	respBody.Email = updatedUser.Email
 	respBody.Token = signedJwtToken
 	respBody.RefreshToken = refreshToken.RefreshToken
+	respBody.IsChirpyRed = updatedUser.IsChirpyRed
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -116,7 +117,7 @@ w.Header().Set("Content-Type", "application/json")
 
 	refreshTokenStruct, err := cfg.DB.ReadSingleRefreshTokenWDetails(refreshToken)
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 
@@ -132,7 +133,7 @@ w.Header().Set("Content-Type", "application/json")
 
 	signedJwtToken, err := newJwtToken.SignedString([]byte(cfg.jwtSecret))
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -140,7 +141,7 @@ w.Header().Set("Content-Type", "application/json")
 	
 	_, err = rand.Read([]byte(random32Bytes))
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -148,7 +149,7 @@ w.Header().Set("Content-Type", "application/json")
 
 	dat, err := json.Marshal(respBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -164,13 +165,13 @@ w.Header().Set("Content-Type", "application/json")
 
 	err := cfg.DB.DeleteRefreshToken(refreshToken)
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 
 	dat, err := json.Marshal(respBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		w.Write(dat)
 		return
 	}

@@ -15,7 +15,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 
 	authorID, err := cfg.handlerAuthenticateWJwt(r)
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 
@@ -27,7 +27,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&reqBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	} 
 	
@@ -47,7 +47,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 	respBody.Body = strings.Join(words, " ")
 	chirp, err := cfg.DB.CreateChirp(respBody.Body, authorID)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -56,7 +56,7 @@ func (cfg *apiConfig) handlerCreateChirps(w http.ResponseWriter, r *http.Request
 	
 	dat, err := json.Marshal(respBody)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
@@ -70,13 +70,13 @@ func (cfg *apiConfig)handlerReadChirps(w http.ResponseWriter, r *http.Request){
 
 	chirps, err := cfg.DB.ReadChirps()
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
 	dat, err := json.Marshal(chirps)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -91,19 +91,19 @@ func (cfg *apiConfig)handlerReadSingleChirp(w http.ResponseWriter, r *http.Reque
 	chirpIDPath := r.PathValue("chirpID")
 	chirpID, err := strconv.Atoi(chirpIDPath)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
 	chirp, err := cfg.DB.ReadSingleChirp(chirpID)
 	if err != nil {
-		handlerErrors(w, err, respBody, 404)
+		cfg.handlerErrors(w, err, respBody, 404)
 		return
 	}
 	
 	dat, err := json.Marshal(chirp)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 
@@ -117,31 +117,31 @@ func (cfg *apiConfig)handlerDeleteSingleChirp(w http.ResponseWriter, r *http.Req
 
 	userID, err := cfg.handlerAuthenticateWJwt(r)
 	if err != nil {
-		handlerErrors(w, err, respBody, 401)
+		cfg.handlerErrors(w, err, respBody, 401)
 		return
 	}
 	
 	chirpIDPath := r.PathValue("chirpID")
 	chirpID, err := strconv.Atoi(chirpIDPath)
 	if err != nil {
-		handlerErrors(w, err, respBody, 500)
+		cfg.handlerErrors(w, err, respBody, 500)
 		return
 	}
 	
 	chirp, err := cfg.DB.ReadSingleChirp(chirpID)
 	if err != nil {
-		handlerErrors(w, err, respBody, 404)
+		cfg.handlerErrors(w, err, respBody, 404)
 		return
 	}
 	
 	if chirp.AuthorID != userID {
-		handlerErrors(w, errors.New("not authorized to delete this chirp"), respBody, 403)
+		cfg.handlerErrors(w, errors.New("not authorized to delete this chirp"), respBody, 403)
 		return
 	}
 	
 	err = cfg.DB.DeleteSingleChirp(chirp.ID)
 	if err != nil {
-		handlerErrors(w, err, respBody, 404)
+		cfg.handlerErrors(w, err, respBody, 404)
 		return
 	}
 	

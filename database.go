@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"sort"
 	"sync"
@@ -143,8 +144,10 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 		newUser.ID = users[len(users) - 1].ID + 1
 	}
 
+	
 	newUser.Email = email
 	newUser.HashedPassword = hashedPassword
+	fmt.Println(email, newUser.Email)
 
 	users = append(users, newUser)
 
@@ -157,7 +160,7 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 }
 
 // UpdateUser update a User and saves it to disk
-func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User, error){
+func (db *DB) UpdateUser(newEmail string, newHashedPassword []byte, userID int) (User, error){
 	db.mux.RLock()
 	defer db.mux.RUnlock()
 
@@ -173,9 +176,35 @@ func (db *DB) UpdateUser(email string, hashedPassword []byte, userID int) (User,
 		return updatedUser, errors.New("User does not exist")
 	}
 
-	updatedUser.ID = user.ID
-	updatedUser.Email = email
-	updatedUser.HashedPassword = hashedPassword
+	updatedUser = user
+	updatedUser.Email = newEmail
+	updatedUser.HashedPassword = newHashedPassword
+
+	currentDB.Users[userID] = updatedUser
+
+	db.writeDB(currentDB)
+	return updatedUser, nil
+}
+
+// UpgradeUser upgrade a User to Chripy Red and saves it to disk
+func (db *DB) UpgradeUser(userID int) (User, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	updatedUser := User{}
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return updatedUser, err
+	}
+	
+	user, exist := currentDB.Users[userID]
+	if !exist {
+		return updatedUser, errors.New("user does not exist")
+	}
+
+	updatedUser = user
+	updatedUser.IsChirpyRed = true
 
 	currentDB.Users[userID] = updatedUser
 

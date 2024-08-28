@@ -13,6 +13,7 @@ type RespBody struct {
 	Email string `json:"email"`
 	Token string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
+	IsChirpyRed bool `json:"is_chirpy_red"`
 }
 
 type Chirp struct {
@@ -25,6 +26,7 @@ type User struct {
 	ID int `json:"id"`
 	Email string `json:"email"`
 	HashedPassword []byte `json:"hashed_password"`
+	IsChirpyRed bool `json:"is_chirpy_red"`
 }
 
 type DB struct {

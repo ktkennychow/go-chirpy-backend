@@ -67,6 +67,8 @@ func main(){
 
 	sMux.HandleFunc("POST /api/revoke", apiConfig.handlerRevokeAuth)
 
+	sMux.HandleFunc("POST /api/polka/webhooks", apiConfig.handlerPolkaUserUpgrade)
+
 	log.Printf("Serving files from %v on port: %v", filepathRoot, port)
 	log.Fatal(server.ListenAndServe())
 }
