@@ -13,6 +13,7 @@ type apiConfig struct {
 	FileserverHits int
 	DB *DB
 	jwtSecret string
+	polkaWebhookApiKey string
 }
 
 func main(){
@@ -32,7 +33,7 @@ func main(){
 		log.Fatal(err)
 	}
 	
-	apiConfig := apiConfig{FileserverHits: 0, DB: db, jwtSecret: os.Getenv("JWT_SECRET")}
+	apiConfig := apiConfig{FileserverHits: 0, DB: db, jwtSecret: os.Getenv("JWT_SECRET"), polkaWebhookApiKey: os.Getenv("POLKA_WEBHOOK_API_KEY")}
 
 	sMux := http.NewServeMux()
 

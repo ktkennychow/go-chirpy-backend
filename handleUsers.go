@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -115,6 +117,14 @@ func (cfg *apiConfig) handlerPolkaUserUpgrade(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		cfg.handlerErrors(w, err, respBody, 500)
 		return
+	}
+
+	apiKeyString := strings.TrimPrefix(r.Header.Get("Authorization"), "ApiKey ")
+
+	fmt.Println(1, apiKeyString, 2, cfg.polkaWebhookApiKey)
+	if apiKeyString != cfg.polkaWebhookApiKey {
+		w.WriteHeader(401)
+		return 
 	}
 
 	if reqBody.Event == "user.upgraded" {
