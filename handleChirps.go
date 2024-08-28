@@ -68,10 +68,27 @@ func (cfg *apiConfig)handlerReadChirps(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
-	chirps, err := cfg.DB.ReadChirps()
+	authorIDString := r.URL.Query().Get("author_id")
+	authorID, err := strconv.Atoi(authorIDString)
 	if err != nil {
 		cfg.handlerErrors(w, err, respBody, 500)
 		return
+	}
+
+	var chirps []Chirp
+
+	if authorIDString != "" {
+		chirps, err = cfg.DB.ReadChirpsByAuthorID(authorID) 
+		if err != nil {
+			cfg.handlerErrors(w, err, respBody, 500)
+			return
+		}
+	} else {
+		chirps, err = cfg.DB.ReadChirps()
+		if err != nil {
+			cfg.handlerErrors(w, err, respBody, 500)
+			return
+		}
 	}
 	
 	dat, err := json.Marshal(chirps)

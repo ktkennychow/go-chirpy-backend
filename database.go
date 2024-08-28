@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"sort"
 	"sync"
@@ -69,6 +68,28 @@ func (db *DB) ReadChirps() ([]Chirp, error){
 	for _, chirp := range currentDB.Chirps {
 		chirpsSlice = append(chirpsSlice, chirp)
 	}
+
+	return chirpsSlice, nil
+}
+
+// ReadChirps returns all chirps with the same authorID in the database
+func (db *DB) ReadChirpsByAuthorID(authorID int) ([]Chirp, error){
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	chirpsSlice := []Chirp{}
+
+	currentDB, err := db.loadDB()
+	if err != nil {
+		return chirpsSlice, err
+	}
+
+	for _, chirp := range currentDB.Chirps {
+		if chirp.AuthorID == authorID {
+			chirpsSlice = append(chirpsSlice, chirp)
+		}
+	}
+
 	return chirpsSlice, nil
 }
 
@@ -144,10 +165,8 @@ func (db *DB) CreateUsers(email string, hashedPassword []byte) (User, error){
 		newUser.ID = users[len(users) - 1].ID + 1
 	}
 
-	
 	newUser.Email = email
 	newUser.HashedPassword = hashedPassword
-	fmt.Println(email, newUser.Email)
 
 	users = append(users, newUser)
 
