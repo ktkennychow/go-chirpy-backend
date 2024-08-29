@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -68,29 +69,39 @@ func (cfg *apiConfig)handlerReadChirps(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	respBody := &RespBody{}
 
-	authorIDString := r.URL.Query().Get("author_id")
-	authorID, err := strconv.Atoi(authorIDString)
-	if err != nil {
-		cfg.handlerErrors(w, err, respBody, 500)
-		return
-	}
-
-	var chirps []Chirp
-
-	if authorIDString != "" {
-		chirps, err = cfg.DB.ReadChirpsByAuthorID(authorID) 
+	chirps, err := cfg.DB.ReadChirps()
 		if err != nil {
 			cfg.handlerErrors(w, err, respBody, 500)
 			return
 		}
+
+	authorID := r.URL.Query().Get("author_id")
+
+	if authorID != "" {
+		authorID, err := strconv.Atoi(authorID)
+		if err != nil {
+			cfg.handlerErrors(w, err, respBody, 500)
+			return
+		}
+		for i, chirp := range chirps {
+			if chirp.AuthorID != authorID {
+				chirps = append(chirps[:i], chirps[i+1:]...)
+			}	
+		}
+	}
+
+	sortCommand := r.URL.Query().Get("sort")
+
+	if sortCommand == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID > chirps[j].ID 
+		})
 	} else {
-		chirps, err = cfg.DB.ReadChirps()
-		if err != nil {
-			cfg.handlerErrors(w, err, respBody, 500)
-			return
-		}
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID < chirps[j].ID 
+		})
 	}
-	
+
 	dat, err := json.Marshal(chirps)
 	if err != nil {
 		cfg.handlerErrors(w, err, respBody, 500)
